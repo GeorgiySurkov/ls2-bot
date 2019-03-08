@@ -64,21 +64,18 @@ def main():
             body = vk_object['text']
             if peer_id in curriculum_builders:
                 try:
-                    day_i = 0
-                    curriculum = {}
+                    curriculum = []
+                    now_day_lessons = []
                     subjects = body.split('\n')
                     for subj in subjects:
-                        now_day = days[day_i]
                         if subj != '':
                             if subj[-1] == ',':
                                 subj = subj[:-1]
-                            if now_day in curriculum:
-                                curriculum[now_day].append(subj)
-                            else:
-                                curriculum[now_day] = []
-                                curriculum[now_day].append(subj)
+                            now_day_lessons.append(subj)
                         else:
-                            day_i += 1
+                            curriculum.append(now_day_lessons)
+                            now_day_lessons = []
+                    curriculum.append(now_day_lessons)
                     classes_curriculum[peer_id] = curriculum
                     send_message(peer_id, 'Я записал ваше расписание в базу данных!')
                     curriculum_builders.discard(peer_id)
@@ -128,11 +125,10 @@ def main():
                         curriculum_reseters.add(peer_id)
                 elif body.lower() == 'скинь наше расписание':
                     if peer_id in classes_curriculum:
-                        curriculum = classes_curriculum[peer_id]
-                        curr_list = []
-                        for i in range(len(curriculum)):
-                            curr_list.append([rus_days[i] + ':'] + curriculum[days[i]])
-                        message = '\n\n'.join(['\n'.join(day) for day in curr_list])
+                        curriculum = classes_curriculum[peer_id][:]
+                        for i, day in enumerate(curriculum):
+                            day.insert(0, f'{rus_days[i]}:')
+                        message = '\n\n'.join(['\n'.join(day) for day in curriculum])
                     else:
                         message = 'Вы еще не записали свое расписание в базу данных'
                     send_message(
