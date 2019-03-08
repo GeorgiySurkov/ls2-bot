@@ -1,6 +1,7 @@
 import random
 import vk_api
 from flask import Flask, request, json
+from datetime import timedelta, datetime, time
 
 app = Flask(__name__)
 
@@ -10,7 +11,8 @@ vk = vk_api.VkApi(token='your_token')
 
 curriculum_builders = set()  # Словарь id бесед, где составляют расписание
 curriculum_reseters = set()
-classes_curriculum = {}  # Словарь id бесед, значением которых является список предметов
+classes_curriculum = {}  # Словарь id бесед, значением которых является расписание
+classes_subjects = {}  # Словарь id бесед со значениями множеств предметов
 days = ('mo', 'tu', 'we', 'th', 'fr', 'sa', 'su')
 rus_days = ('Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье')
 curriculum_eg = "Русский язык,\n" \
@@ -32,8 +34,24 @@ curriculum_eg = "Русский язык,\n" \
                 "\n" \
                 "Алгебра,\n" \
                 "Русский язык"
+classes_home_tasks = {}  # Словарь id бесед, с домашним заданием формата (<предмет>, <дата урока, на который задан>): <задание>
 
 # ----------------Variables----------------
+
+
+def get_now_date():
+    return (datetime.now() + timedelta(hours=5)).date()
+
+
+def get_next_lesson_date(subject, curriculum):
+    today_weekday = get_now_date().weekday()
+    curriculum += [[] for i in range(7 - len(curriculum))]
+    ordered_curriculum = curriculum[today_weekday + 1:] + curriculum[:today_weekday]
+    ordered_curriculum = list(filter(lambda x: len(x) > 0, ordered_curriculum))
+    for i, day in enumerate(ordered_curriculum):
+        if subject in day:
+            return get_now_date() + timedelta(days=i + 2)
+    return get_now_date()
 
 
 def send_message(peer_id, msg):
@@ -54,6 +72,7 @@ def send_message_i_dont_understand(peer_id):
 
 @app.route('/', methods=['POST'])
 def main():
+    global curriculum_reseters, curriculum_builders, classes_curriculum, classes_subjects, classes_home_tasks
     data = json.loads(request.data)
     if data['type'] == 'confirmation':
         return '2b3ebffb'
@@ -65,6 +84,7 @@ def main():
             if peer_id in curriculum_builders:
                 try:
                     curriculum = []
+                    subjects_set = set()
                     now_day_lessons = []
                     subjects = body.split('\n')
                     assert 0 <= len([a for a in subjects if a == '']) <= 6
@@ -73,11 +93,13 @@ def main():
                             if subj[-1] == ',':
                                 subj = subj[:-1]
                             now_day_lessons.append(subj)
+                            subjects_set.add(subj)
                         else:
                             curriculum.append(now_day_lessons)
                             now_day_lessons = []
                     curriculum.append(now_day_lessons)
                     classes_curriculum[peer_id] = curriculum
+                    classes_subjects[peer_id] = subjects_set
                     send_message(peer_id, 'Я записал ваше расписание в базу данных!')
                     curriculum_builders.discard(peer_id)
                 except AssertionError:
@@ -105,11 +127,15 @@ def main():
                 if body.lower() == 'привет':
                     send_message(peer_id, 'Привет, друг!')
                 elif body.lower() == 'скинь домашку':
-                    send_message(
-                        peer_id,
-                        'Пока такой функции у меня нет, я только могу отвечать на самые простые сообщения'
-                    )
-                elif body.lower() == 'составь расписание':
+                    if peer_id in classes_home_tasks:
+                        home_task_for_tomorrow = ['Задание на следующий учебный день:']
+                        for key, task in filter(lambda x: x[1] == get_now_date(), classes_home_tasks[peer_id]):
+                            subject = key[0]
+                            home_task_for_tomorrow.append(f'{subject} - {task}')
+                        send_message(peer_id, '\n'.join(home_task_for_tomorrow))
+                    else:
+                        send_message(peer_id, 'У вас нет домашнего задания на завтра!')
+                elif body.lower() == 'составь наше расписание':
                     if peer_id not in classes_curriculum:
                         send_message(
                             peer_id,
@@ -136,6 +162,23 @@ def main():
                         peer_id,
                         message
                     )
+                elif body.count(': ') == 1:
+                    subject, task = body.split(': ')
+                    subject = subject.title()
+                    task = task.title()
+                    if peer_id in classes_curriculum:
+                        if subject in classes_subjects[peer_id]:
+                            peer_curr = classes_curriculum[peer_id]
+                            next_lesson = get_next_lesson_date(subject, peer_curr[:])
+                            if peer_id in classes_home_tasks:
+                                classes_home_tasks[peer_id][(subject, next_lesson)] = task
+                            else:
+                                classes_home_tasks[peer_id] = {}
+                                classes_home_tasks[peer_id][(subject, next_lesson)] = task
+                        else:
+                            send_message(peer_id, 'У вас нет такого предмета!')
+                    else:
+                        send_message(peer_id, 'Вы еще не записали свое расписание в базу данных!')
                 else:
                     send_message_i_dont_understand(peer_id)
             return 'ok'
