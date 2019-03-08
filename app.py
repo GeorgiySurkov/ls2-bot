@@ -67,6 +67,7 @@ def main():
                     curriculum = []
                     now_day_lessons = []
                     subjects = body.split('\n')
+                    assert 0 <= len([a for a in subjects if a == '']) <= 6
                     for subj in subjects:
                         if subj != '':
                             if subj[-1] == ',':
@@ -79,7 +80,7 @@ def main():
                     classes_curriculum[peer_id] = curriculum
                     send_message(peer_id, 'Я записал ваше расписание в базу данных!')
                     curriculum_builders.discard(peer_id)
-                except KeyError:
+                except AssertionError:
                     send_message(peer_id, 'Произошла ошибка. Скорее всего, вы некорректно ввели расписание')
             elif peer_id in curriculum_reseters:
                 if body.lower() == 'да':
