@@ -164,10 +164,10 @@ def main():
                     )
                 elif body.count(': ') == 1:
                     subject, task = body.split(': ')
-                    subject = subject.title()
-                    task = task.title()
+                    subject = subject.capitalize()
+                    task = task.capitalize()
                     if peer_id in classes_curriculum:
-                        if subject in classes_subjects[peer_id]:
+                        if subject in classes_subjects[peer_id]: # внутри этогго ифа происходит ошибка
                             peer_curr = classes_curriculum[peer_id]
                             next_lesson = get_next_lesson_date(subject, peer_curr[:])
                             if peer_id in classes_home_tasks:
@@ -175,6 +175,7 @@ def main():
                             else:
                                 classes_home_tasks[peer_id] = {}
                                 classes_home_tasks[peer_id][(subject, next_lesson)] = task
+                            send_message(peer_id, f'Записал ваше дз:\n{subject} - {task}')
                         else:
                             send_message(peer_id, 'У вас нет такого предмета!')
                     else:
@@ -182,3 +183,4 @@ def main():
                 else:
                     send_message_i_dont_understand(peer_id)
             return 'ok'
+# При отправке домашки бот ничего не пишет
