@@ -47,10 +47,9 @@ def get_next_lesson_date(subject, curriculum):
     today_weekday = get_now_date().weekday()
     curriculum += [[] for i in range(7 - len(curriculum))]
     ordered_curriculum = curriculum[today_weekday + 1:] + curriculum[:today_weekday]
-    ordered_curriculum = list(filter(lambda x: len(x) > 0, ordered_curriculum))
     for i, day in enumerate(ordered_curriculum):
         if subject in day:
-            return get_now_date() + timedelta(days=i + 2)
+            return get_now_date() + timedelta(days=i + 1)
     return get_now_date()
 
 
