@@ -1,7 +1,7 @@
 import random
 import vk_api
 from flask import Flask, request, json
-from datetime import timedelta, datetime, time
+from datetime import timedelta, datetime
 
 app = Flask(__name__)
 
@@ -91,8 +91,8 @@ def main():
                         if subj != '':
                             if subj[-1] == ',':
                                 subj = subj[:-1]
-                            now_day_lessons.append(subj)
-                            subjects_set.add(subj)
+                            now_day_lessons.append(subj.capitalize())
+                            subjects_set.add(subj.capitalize())
                         else:
                             curriculum.append(now_day_lessons)
                             now_day_lessons = []
@@ -127,8 +127,9 @@ def main():
                     send_message(peer_id, 'Привет, друг!')
                 elif body.lower() == 'скинь домашку':
                     if peer_id in classes_home_tasks:
+                        send_message(peer_id, str(classes_home_tasks[peer_id]))
                         home_task_for_tomorrow = ['Задание на следующий учебный день:']
-                        for key, task in filter(lambda x: x[1] == get_now_date(), classes_home_tasks[peer_id]):
+                        for key, task in filter(lambda x: x[0][1] == get_now_date(), classes_home_tasks[peer_id].items()):
                             subject = key[0]
                             home_task_for_tomorrow.append(f'{subject} - {task}')
                         send_message(peer_id, '\n'.join(home_task_for_tomorrow))
@@ -166,7 +167,7 @@ def main():
                     subject = subject.capitalize()
                     task = task.capitalize()
                     if peer_id in classes_curriculum:
-                        if subject in classes_subjects[peer_id]: # внутри этогго ифа происходит ошибка
+                        if subject in classes_subjects[peer_id]:
                             peer_curr = classes_curriculum[peer_id]
                             next_lesson = get_next_lesson_date(subject, peer_curr[:])
                             if peer_id in classes_home_tasks:
@@ -182,4 +183,3 @@ def main():
                 else:
                     send_message_i_dont_understand(peer_id)
             return 'ok'
-# При отправке домашки бот ничего не пишет
