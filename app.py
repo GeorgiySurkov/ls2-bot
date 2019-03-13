@@ -3,6 +3,7 @@ import vk_api
 from flask import Flask, request, json
 from datetime import timedelta, datetime
 from copy import deepcopy
+from time import sleep
 
 app = Flask(__name__)
 
@@ -90,12 +91,13 @@ def main():
                     subjects = body.split('\n')
                     assert 0 <= len([a for a in subjects if a == '']) <= 6
                     for subj in subjects:
+                        sleep(0.01)
                         subj = subj.capitalize()
                         if subj != '':
                             if subj[-1] == ',':
                                 subj = subj[:-1]
-                            now_day_lessons.append(subj)
-                            subjects_set.add(subj)
+                            now_day_lessons.append(subj.capitalize())
+                            subjects_set.add(subj.capitalize())
                         else:
                             curriculum.append(now_day_lessons)
                             now_day_lessons = []
@@ -103,14 +105,13 @@ def main():
                     classes_curriculum[peer_id] = curriculum
                     classes_subjects[peer_id] = subjects_set
                     send_message(peer_id, 'Я записал ваше расписание в базу данных!')
-                    send_message(peer_id, str(curriculum))
-                    send_message(peer_id, str(subjects_set))
                     curriculum_builders.discard(peer_id)
                 except AssertionError:
                     send_message(peer_id, 'Произошла ошибка. Скорее всего, вы некорректно ввели расписание')
             elif peer_id in curriculum_reseters:
                 if body.lower() == 'да':
                     del classes_curriculum[peer_id]
+                    del classes_subjects[peer_id]
                     curriculum_reseters.discard(peer_id)
                     send_message(
                         peer_id,
@@ -131,16 +132,26 @@ def main():
                 if body.lower() == 'привет':
                     send_message(peer_id, 'Привет, друг!')
                 elif body.lower() == 'скинь домашку':
-                    if peer_id in classes_home_tasks:
-                        send_message(peer_id, str(classes_home_tasks[peer_id]))
-                        home_task_for_tomorrow = ['Задание на следующий учебный день:']
-                        peer_tasks = deepcopy(classes_home_tasks[peer_id])
-                        send_message(peer_id, str(list(filter(lambda x: x[0] == get_now_date(), peer_tasks))))
-                        for date, subject, task in filter(lambda x: x[0] == get_now_date(), peer_tasks):
-                            home_task_for_tomorrow.append(f'{subject} - {task}')
-                        send_message(peer_id, '\n'.join(home_task_for_tomorrow))
+                    if peer_id in classes_curriculum:
+                        if peer_id in classes_home_tasks:
+                            home_task_for_tomorrow = ['Задание на следующий учебный день:']
+                            peer_tasks = deepcopy(classes_home_tasks[peer_id])
+                            for date, subject, task in filter(lambda x: x[0] == get_now_date() + timedelta(days=1), peer_tasks):
+                                home_task_for_tomorrow.append(f'{subject} - {task}')
+                            if len(home_task_for_tomorrow) == 1:
+                                send_message(
+                                    peer_id,
+                                    'У вас нет домашнего задания на завтра, или его нет в моей базе данных!'
+                                )
+                            else:
+                                send_message(peer_id, '\n'.join(home_task_for_tomorrow))
+                        else:
+                            send_message(
+                                peer_id,
+                                'У вас нет домашнего задания на завтра, или его нет в моей базе данных!'
+                            )
                     else:
-                        send_message(peer_id, 'У вас нет домашнего задания на завтра!')
+                        send_message(peer_id, 'Вы еще не записали свое расписание в базу данных!')
                 elif body.lower() == 'составь наше расписание':
                     if peer_id not in classes_curriculum:
                         send_message(
