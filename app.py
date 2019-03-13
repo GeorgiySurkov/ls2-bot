@@ -2,6 +2,7 @@ import random
 import vk_api
 from flask import Flask, request, json
 from datetime import timedelta, datetime
+from copy import deepcopy
 
 app = Flask(__name__)
 
@@ -44,6 +45,7 @@ def get_now_date():
 
 
 def get_next_lesson_date(subject, curriculum):
+    curriculum = deepcopy(curriculum)
     today_weekday = get_now_date().weekday()
     curriculum += [[] for i in range(7 - len(curriculum))]
     ordered_curriculum = curriculum[today_weekday + 1:] + curriculum[:today_weekday]
