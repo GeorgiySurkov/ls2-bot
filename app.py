@@ -90,11 +90,12 @@ def main():
                     subjects = body.split('\n')
                     assert 0 <= len([a for a in subjects if a == '']) <= 6
                     for subj in subjects:
+                        subj = subj.capitalize()
                         if subj != '':
                             if subj[-1] == ',':
                                 subj = subj[:-1]
-                            now_day_lessons.append(subj.capitalize())
-                            subjects_set.add(subj.capitalize())
+                            now_day_lessons.append(subj)
+                            subjects_set.add(subj)
                         else:
                             curriculum.append(now_day_lessons)
                             now_day_lessons = []
@@ -102,6 +103,8 @@ def main():
                     classes_curriculum[peer_id] = curriculum
                     classes_subjects[peer_id] = subjects_set
                     send_message(peer_id, 'Я записал ваше расписание в базу данных!')
+                    send_message(peer_id, str(curriculum))
+                    send_message(peer_id, str(subjects_set))
                     curriculum_builders.discard(peer_id)
                 except AssertionError:
                     send_message(peer_id, 'Произошла ошибка. Скорее всего, вы некорректно ввели расписание')
@@ -131,8 +134,9 @@ def main():
                     if peer_id in classes_home_tasks:
                         send_message(peer_id, str(classes_home_tasks[peer_id]))
                         home_task_for_tomorrow = ['Задание на следующий учебный день:']
-                        for key, task in filter(lambda x: x[0][1] == get_now_date(), classes_home_tasks[peer_id].items()):
-                            subject = key[0]
+                        peer_tasks = deepcopy(classes_home_tasks[peer_id])
+                        send_message(peer_id, str(list(filter(lambda x: x[0] == get_now_date(), peer_tasks))))
+                        for date, subject, task in filter(lambda x: x[0] == get_now_date(), peer_tasks):
                             home_task_for_tomorrow.append(f'{subject} - {task}')
                         send_message(peer_id, '\n'.join(home_task_for_tomorrow))
                     else:
@@ -171,12 +175,12 @@ def main():
                     if peer_id in classes_curriculum:
                         if subject in classes_subjects[peer_id]:
                             peer_curr = classes_curriculum[peer_id]
-                            next_lesson = get_next_lesson_date(subject, peer_curr[:])
+                            next_lesson = get_next_lesson_date(subject, peer_curr)
                             if peer_id in classes_home_tasks:
-                                classes_home_tasks[peer_id][(subject, next_lesson)] = task
+                                classes_home_tasks[peer_id].append((next_lesson, subject, task))
                             else:
-                                classes_home_tasks[peer_id] = {}
-                                classes_home_tasks[peer_id][(subject, next_lesson)] = task
+                                classes_home_tasks[peer_id] = []
+                                classes_home_tasks[peer_id].append((next_lesson, subject, task))
                             send_message(peer_id, f'Записал ваше дз:\n{subject} - {task}')
                         else:
                             send_message(peer_id, 'У вас нет такого предмета!')
